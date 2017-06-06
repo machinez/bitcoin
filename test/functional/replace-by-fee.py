@@ -65,17 +65,12 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 1
         self.setup_clean_chain = False
-
-    def setup_network(self):
-        self.nodes = []
-        self.nodes.append(start_node(0, self.options.tmpdir, ["-maxorphantx=1000",
-                                                              "-whitelist=127.0.0.1",
-                                                              "-limitancestorcount=50",
-                                                              "-limitancestorsize=101",
-                                                              "-limitdescendantcount=200",
-                                                              "-limitdescendantsize=101"
-                                                              ]))
-        self.is_network_split = False
+        self.extra_args= [["-maxorphantx=1000",
+                           "-whitelist=127.0.0.1",
+                           "-limitancestorcount=50",
+                           "-limitancestorsize=101",
+                           "-limitdescendantcount=200",
+                           "-limitdescendantsize=101"]]
 
     def run_test(self):
         make_utxo(self.nodes[0], 1*COIN)
@@ -487,7 +482,7 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         assert_raises_jsonrpc(-26, "insufficient fee", self.nodes[0].sendrawtransaction, tx1b_hex, True)
 
         # Use prioritisetransaction to set tx1a's fee to 0.
-        self.nodes[0].prioritisetransaction(tx1a_txid, int(-0.1*COIN))
+        self.nodes[0].prioritisetransaction(txid=tx1a_txid, fee_delta=int(-0.1*COIN))
 
         # Now tx1b should be able to replace tx1a
         tx1b_txid = self.nodes[0].sendrawtransaction(tx1b_hex, True)
@@ -514,7 +509,7 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         assert_raises_jsonrpc(-26, "insufficient fee", self.nodes[0].sendrawtransaction, tx2b_hex, True)
 
         # Now prioritise tx2b to have a higher modified fee
-        self.nodes[0].prioritisetransaction(tx2b.hash, int(0.1*COIN))
+        self.nodes[0].prioritisetransaction(txid=tx2b.hash, fee_delta=int(0.1*COIN))
 
         # tx2b should now be accepted
         tx2b_txid = self.nodes[0].sendrawtransaction(tx2b_hex, True)

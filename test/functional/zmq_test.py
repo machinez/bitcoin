@@ -6,9 +6,8 @@
 import configparser
 import os
 import struct
-import sys
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import BitcoinTestFramework, SkipTest
 from test_framework.util import *
 
 class ZMQTest (BitcoinTestFramework):
@@ -24,23 +23,23 @@ class ZMQTest (BitcoinTestFramework):
         try:
             import zmq
         except ImportError:
-            self.log.warning("python3-zmq module not available. Skipping zmq tests!")
-            sys.exit(self.TEST_EXIT_SKIPPED)
+            raise SkipTest("python3-zmq module not available.")
 
         # Check that bitcoin has been built with ZMQ enabled
         config = configparser.ConfigParser()
-        config.read_file(open(os.path.dirname(__file__) + "/config.ini"))
+        if not self.options.configfile:
+            self.options.configfile = os.path.dirname(__file__) + "/config.ini"
+        config.read_file(open(self.options.configfile))
 
         if not config["components"].getboolean("ENABLE_ZMQ"):
-            self.log.warning("bitcoind has not been built with zmq enabled. Skipping zmq tests!")
-            sys.exit(self.TEST_EXIT_SKIPPED)
+            raise SkipTest("bitcoind has not been built with zmq enabled.")
 
         self.zmqContext = zmq.Context()
         self.zmqSubSocket = self.zmqContext.socket(zmq.SUB)
         self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, b"hashblock")
         self.zmqSubSocket.setsockopt(zmq.SUBSCRIBE, b"hashtx")
         self.zmqSubSocket.connect("tcp://127.0.0.1:%i" % self.port)
-        return start_nodes(self.num_nodes, self.options.tmpdir, extra_args=[
+        self.nodes = self.start_nodes(self.num_nodes, self.options.tmpdir, extra_args=[
             ['-zmqpubhashtx=tcp://127.0.0.1:'+str(self.port), '-zmqpubhashblock=tcp://127.0.0.1:'+str(self.port)],
             [],
             [],
